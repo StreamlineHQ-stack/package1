@@ -1,0 +1,14 @@
+{
+    "name": "Minimalist Dark",
+    "colors": {
+        "bg": "#121212",
+        "card_bg": "#1E1E1E",
+        "text": "#FFFFFF",
+        "body": "#CCCCCC",
+        "accent": "#3B82F6",
+        "border": "#2D2D2D",
+        "footer": "#888888"
+    },
+    "branding": {"show_logo": false, "bg_image_path": null},
+    "fonts": {"header_font": "Helvetica-Bold", "body_font": "Helvetica"}
+}

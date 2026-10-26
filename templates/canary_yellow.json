@@ -1,0 +1,14 @@
+{
+    "name": "High-Contrast Canary",
+    "colors": {
+        "bg": "#111111",
+        "card_bg": "#1C1C1C",
+        "text": "#FFFFFF",
+        "body": "#E5E7EB",
+        "accent": "#FACC15",
+        "border": "#27272A",
+        "footer": "#71717A"
+    },
+    "branding": {"show_logo": false, "bg_image_path": null},
+    "fonts": {"header_font": "Helvetica-Bold", "body_font": "Helvetica"}
+}

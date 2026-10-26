@@ -1,0 +1,14 @@
+{
+    "name": "Bold B2B",
+    "colors": {
+        "bg": "#0F172A",
+        "card_bg": "#1E293B",
+        "text": "#F8FAFC",
+        "body": "#94A3B8",
+        "accent": "#38BDF8",
+        "border": "#334155",
+        "footer": "#64748B"
+    },
+    "branding": {"show_logo": false, "bg_image_path": null},
+    "fonts": {"header_font": "Helvetica-Bold", "body_font": "Helvetica"}
+}

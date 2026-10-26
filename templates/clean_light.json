@@ -1,0 +1,14 @@
+{
+    "name": "Clean Light Mode",
+    "colors": {
+        "bg": "#F9FAFB",
+        "card_bg": "#FFFFFF",
+        "text": "#111827",
+        "body": "#4B5563",
+        "accent": "#2563EB",
+        "border": "#E5E7EB",
+        "footer": "#9CA3AF"
+    },
+    "branding": {"show_logo": false, "bg_image_path": null},
+    "fonts": {"header_font": "Helvetica-Bold", "body_font": "Helvetica"}
+}
