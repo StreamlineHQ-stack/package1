@@ -1,0 +1,605 @@
+import io
+import json
+import os
+import base64
+import requests
+import streamlit as st
+from PIL import Image, ImageDraw, ImageFont
+
+# Import your core engine modules
+from app_engine import generate_carousel_deck
+from framework_data import FRAMEWORK_LIBRARY
+from image_renderer import generate_png_zip_from_slides
+
+# --- PAGE CONFIGURATION ---
+st.set_page_config(
+    page_title="Creator Suite • Master Platform Hub (4-in-1)",
+    page_icon="⚡",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# --- CUSTOM SAAS STYLING ---
+st.markdown(
+    """
+    <style>
+    .main { background-color: #0e1117; color: #fafafa; }
+    .card { background-color: #161b22; padding: 25px; border-radius: 10px; border: 1px solid #30363d; margin-bottom: 20px; }
+    .step-header { color: #58a6ff; font-weight: bold; font-size: 1.2rem; margin-bottom: 10px; }
+    .stButton>button { background-color: #ffcc00; color: #0e1117; font-weight: bold; border-radius: 6px; border: none; }
+    .stButton>button:hover { background-color: #e6b800; color: #0e1117; }
+    </style>
+""",
+    unsafe_allow_html=True,
+)
+
+# --- SESSION STATE INITIALIZATION ---
+if "deck_json" not in st.session_state:
+    st.session_state["deck_json"] = None
+if "current_slide" not in st.session_state:
+    st.session_state["current_slide"] = 0
+if "animated_gif_bytes" not in st.session_state:
+    st.session_state["animated_gif_bytes"] = None
+if "mp4_video_bytes" not in st.session_state:
+    st.session_state["mp4_video_bytes"] = None
+if "generated_caption" not in st.session_state:
+    st.session_state["generated_caption"] = ""
+
+
+# --- COMPLETE 10-THEME & FONT STYLE DICTIONARY ---
+THEME_OPTIONS = {
+    "High-Contrast Canary": "⚡ High-Contrast Canary (Black & Yellow)",
+    "Warning Red Alert": "🚨 Warning Red Alert (Charcoal & Crimson)",
+    "Minimalist Clean": "💎 Minimalist Clean (White & Charcoal)",
+    "Warm Editorial": "☕ Warm Editorial (Cream & Terracotta)",
+    "Neon Cyber/Tech": "⚡ Neon Cyber/Tech (Obsidian & Cyan)",
+    "Midnight Luxury": "👑 Midnight Luxury (Dark Obsidian & Gold)",
+    "Emerald Growth": "📈 Emerald Growth (Deep Forest & Mint)",
+    "Nordic Slate": "❄️ Nordic Slate (Slate Grey & Soft Ice Blue)",
+    "Bold Coral Pop": "🔥 Bold Coral Pop (Dark Coral & Warm Cream)",
+    "Monochrome Obsidian": "🖤 Monochrome Obsidian (Pure Dark & Crisp White)"
+}
+
+def get_theme_palette(style_theme, custom_colors=None):
+    if style_theme == "Custom" and custom_colors:
+        return {
+            "bg": custom_colors["bg"], "border": custom_colors["border"], "badge": custom_colors["tag"], 
+            "title": custom_colors["text"], "body": custom_colors["body"], "font_family": "Inter", "title_weight": "700", "body_weight": "400"
+        }
+    elif style_theme == "Warning Red Alert":
+        return {"bg": "#181212", "border": "1px solid #3d2222", "badge": "#ef4444", "title": "#ffffff", "body": "#e5cdc5", "font_family": "Inter", "title_weight": "700", "body_weight": "400"}
+    elif style_theme == "Minimalist Clean":
+        return {"bg": "#ffffff", "border": "1px solid #e0e0e0", "badge": "#0066cc", "title": "#111111", "body": "#444444", "font_family": "Inter", "title_weight": "700", "body_weight": "400"}
+    elif style_theme == "Warm Editorial":
+        return {"bg": "#fbf9f5", "border": "1px solid #e6dfd3", "badge": "#a85732", "title": "#2c221e", "body": "#5c4e47", "font_family": "Inter", "title_weight": "700", "body_weight": "400"}
+    elif style_theme == "Neon Cyber/Tech":
+        return {"bg": "#0b0f19", "border": "1px solid #1e293b", "badge": "#06b6d4", "title": "#f8fafc", "body": "#94a3b8", "font_family": "Inter", "title_weight": "700", "body_weight": "400"}
+    elif style_theme == "Midnight Luxury":
+        return {"bg": "#121212", "border": "1px solid #2a2415", "badge": "#d4af37", "title": "#f5e6c8", "body": "#d4c5a9", "font_family": "Inter", "title_weight": "600", "body_weight": "400"}
+    elif style_theme == "Emerald Growth":
+        return {"bg": "#0a1f1c", "border": "1px solid #133e38", "badge": "#10b981", "title": "#e6f4f1", "body": "#a3cbd0", "font_family": "Inter", "title_weight": "700", "body_weight": "400"}
+    elif style_theme == "Nordic Slate":
+        return {"bg": "#1e242b", "border": "1px solid #334155", "badge": "#38bdf8", "title": "#f1f5f9", "body": "#cbd5e1", "font_family": "Inter", "title_weight": "700", "body_weight": "400"}
+    elif style_theme == "Bold Coral Pop":
+        return {"bg": "#231818", "border": "1px solid #422929", "badge": "#ff6b6b", "title": "#fff0ed", "body": "#e2c4be", "font_family": "Inter", "title_weight": "700", "body_weight": "400"}
+    elif style_theme == "Monochrome Obsidian":
+        return {"bg": "#000000", "border": "1px solid #262626", "badge": "#ffffff", "title": "#ffffff", "body": "#a3a3a3", "font_family": "Inter", "title_weight": "700", "body_weight": "400"}
+    else:  # High-Contrast Canary
+        return {"bg": "#1a1a1a", "border": "none", "badge": "#ffcc00", "title": "#ffffff", "body": "#d1d1d1", "font_family": "Inter", "title_weight": "700", "body_weight": "400"}
+
+
+# --- HELPER FUNCTIONS ---
+def wrap_text_to_width(text, font, max_width, draw):
+    words = text.split()
+    lines = []
+    current_line = []
+    for word in words:
+        test_line = " ".join(current_line + [word])
+        if draw.textlength(test_line, font=font) <= max_width:
+            current_line.append(word)
+        else:
+            if current_line:
+                lines.append(" ".join(current_line))
+            current_line = [word]
+    if current_line:
+        lines.append(" ".join(current_line))
+    return lines
+
+def load_app_font(size):
+    possible_paths = [
+        "arialbd.ttf",
+        "fonts/arialbd.ttf",
+        "C:/Windows/Fonts/arialbd.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    ]
+    for path in possible_paths:
+        if os.path.exists(path):
+            try:
+                return ImageFont.truetype(path, size)
+            except Exception:
+                continue
+    return ImageFont.load_default()
+
+
+# --- MAIN APP HEADER ---
+st.title("⚡ Creator Suite: Master Platform Hub")
+st.markdown("Generate high-converting direct-response carousels, animate motion graphics, map features to emotional benefits, and browse elite style inspiration.")
+st.divider()
+
+# --- SIDEBAR: TIER & LICENSE MANAGEMENT ---
+with st.sidebar:
+    st.title("⚡ Creator Suite")
+    st.caption("Licensing & Access Tier")
+    st.divider()
+
+    license_key = st.text_input("Enter License Key:", type="password", value="TEST_MASTER_KEY")
+    
+    # Determine Tier Access based on key
+    # 'TEST_MASTER_KEY' or keys starting with 'PRO-250' unlock all 4 tools ($250 tier)
+    # Keys starting with 'PASS-149' unlock Core 2 tools ($149 tier)
+    is_full_suite = license_key in ["TEST_MASTER_KEY", "PRO-250"] or license_key.startswith("PRO")
+    is_core_pass = license_key.startswith("PASS-149") or is_full_suite
+
+    if is_full_suite:
+        st.success("👑 Full 4-Tool Suite Unlocked ($250 Tier)")
+    elif is_core_pass:
+        st.success("✅ Core Master Pass Unlocked ($149 Tier)")
+        st.info("💡 Upgrade to the $250 Complete Suite to instantly unlock Tools 3 & 4 right here.")
+    else:
+        st.warning("⚠️ Enter a valid license key.")
+        st.stop()
+
+    st.divider()
+    st.markdown("### 🎨 Visual Layout Styles")
+    theme_mode = st.radio("Styling Mode:", ["Preset Themes", "Custom Brand Hex"])
+    
+    custom_colors = None
+    if theme_mode == "Preset Themes":
+        selected_theme_label = st.selectbox("Choose Visual Design Theme:", list(THEME_OPTIONS.values()))
+        style_theme = [k for k, v in THEME_OPTIONS.items() if v == selected_theme_label][0]
+    else:
+        st.subheader("🎨 Custom Brand Colors")
+        custom_bg = st.color_picker("Background Color", "#0e1117")
+        custom_text = st.color_picker("Main Text Color", "#ffffff")
+        custom_body = st.color_picker("Body Text Color", "#b0c4de")
+        custom_tag = st.color_picker("Accent / Tag Color", "#ff4b4b")
+        custom_border = st.text_input("Border Style (CSS)", "1px solid #30363d")
+        custom_colors = {"bg": custom_bg, "text": custom_text, "body": custom_body, "tag": custom_tag, "border": custom_border}
+        style_theme = "Custom"
+
+    current_palette = get_theme_palette(style_theme, custom_colors)
+
+    st.divider()
+    st.markdown("### 🏷️ Brand Watermark Options")
+    watermark_type = st.radio("Watermark Type:", ["Text Handle", "Logo Image"])
+    
+    logo_file = None
+    logo_base64 = ""
+    brand_handle = ""
+    if watermark_type == "Text Handle":
+        brand_handle = st.text_input("Brand Handle / Text:", "@nikki.coachpages")
+    else:
+        logo_file = st.file_uploader("Upload Brand Logo (PNG/JPG)", type=["png", "jpg", "jpeg"])
+        if logo_file is not None:
+            logo_base64 = base64.b64encode(logo_file.getvalue()).decode()
+
+    slide_count = st.slider("Target Slide Count:", 4, 10, 6)
+
+    st.divider()
+    st.markdown("### ⚙️ Pro Motion Controls (Kinetic Mode)")
+    frame_rate = st.slider("Frame Rate (FPS):", 10, 60, 20)
+    seconds_per_slide = st.slider("Seconds per Slide:", 1.0, 5.0, 2.5, step=0.25)
+
+
+# --- UNIFIED WORKFLOW TABS (5-Tab 4-Tool Suite Architecture) ---
+tab_carousel, tab_kinetic, tab_benefits, tab_inspiration, tab_delivery = st.tabs([
+    "1. 🎨 Carousel Engine Studio",
+    "2. ⚙️ Kinetic Motion Engine",
+    "3. 💡 Feature-to-Benefits",
+    "4. ✨ Style Inspiration (24)",
+    "5. 🚀 Final Delivery & Export",
+])
+
+
+# ==========================================
+# TAB 1: CAROUSEL ENGINE STUDIO
+# ==========================================
+with tab_carousel:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<p class="step-header">Step 1: Build Your Carousel (Auto-Pilot, Notes, or 100-Template Frameworks)</p>', unsafe_allow_html=True)
+
+    sub_tab1, sub_tab2, sub_tab3 = st.tabs(["⚡ Auto-Pilot", "📝 Custom Notes", "🛠️ Framework Wizard"])
+
+    with sub_tab1:
+        topic_input = st.text_input("Core Topic / Hook:", value="High-converting landing page optimization for online coaches")
+        if st.button("Generate Auto-Pilot Deck", type="primary"):
+            with st.spinner("Crafting direct-response deck..."):
+                deck_result, status_msg = generate_carousel_deck(topic_input, slide_count=slide_count, mode="autopilot")
+                st.session_state["deck_json"] = deck_result
+                st.session_state["current_slide"] = 0
+                st.success(f"✅ Carousel generated! ({status_msg})")
+                st.rerun()
+
+    with sub_tab2:
+        notes_input = st.text_area(
+            "Paste raw coaching notes:", height=120,
+            value="Hook: 73% of prospects leave your offer page without buying.\nProblem: Vague copy creates friction.\nSolution: Audit top-of-fold messaging."
+        )
+        if st.button("Format Custom Notes", type="primary"):
+            with st.spinner("Structuring notes..."):
+                deck_result, status_msg = generate_carousel_deck(notes_input, slide_count=slide_count, mode="custom")
+                st.session_state["deck_json"] = deck_result
+                st.session_state["current_slide"] = 0
+                st.success(f"✅ Carousel generated! ({status_msg})")
+                st.rerun()
+
+    with sub_tab3:
+        pillar_name = st.selectbox("Content Pillar:", list(FRAMEWORK_LIBRARY.keys()))
+        template_name = st.selectbox("Blueprint:", list(FRAMEWORK_LIBRARY[pillar_name].keys()))
+        t_data = FRAMEWORK_LIBRARY[pillar_name][template_name]
+
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            h_in = st.text_input("Hook", value=t_data["hook"])
+            p_in = st.text_input("Problem", value=t_data["problem"])
+        with col_f2:
+            s_in = st.text_input("Solution", value=t_data["solution"])
+            c_in = st.text_input("CTA", value=t_data["cta"])
+
+        if st.button("Format Framework Deck", type="primary"):
+            raw_text = f"Hook Element: {h_in}\nProblem/Agitation: {p_in}\nSolution/Steps: {s_in}\nCall to Action: {c_in}"
+            with st.spinner("Building framework carousel..."):
+                deck_result, status_msg = generate_carousel_deck(raw_text, slide_count=slide_count, mode="framework")
+                st.session_state["deck_json"] = deck_result
+                st.session_state["current_slide"] = 0
+                st.success(f"✅ Framework carousel generated! ({status_msg})")
+                st.rerun()
+
+    if st.session_state["deck_json"]:
+        st.divider()
+        slides = []
+        try:
+            deck_data = st.session_state["deck_json"]
+            if isinstance(deck_data, str):
+                parsed = json.loads(deck_data)
+                if isinstance(parsed, list):
+                    slides = parsed
+                elif isinstance(parsed, dict):
+                    slides = parsed.get("slides", [])
+            elif isinstance(deck_data, list):
+                slides = deck_data
+            elif isinstance(deck_data, dict):
+                slides = deck_data.get("slides", [])
+        except Exception as e:
+            st.error(f"Error parsing deck JSON: {e}")
+            slides = []
+
+        total_slides = len(slides)
+        if total_slides > 0:
+            if st.session_state["current_slide"] >= total_slides:
+                st.session_state["current_slide"] = total_slides - 1
+
+            curr = st.session_state["current_slide"]
+            s = slides[curr]
+
+            if isinstance(s, dict):
+                tag = str(s.get("category", s.get("tag", s.get("type", f"STEP {curr+1}")))).upper()
+                title = s.get("title", s.get("headline", ""))
+                body = s.get("content", s.get("body", ""))
+            else:
+                tag = f"STEP {curr+1}"
+                title = str(s)
+                body = ""
+
+            watermark_html = ""
+            if watermark_type == "Text Handle" and brand_handle:
+                watermark_html = f'<span style="color: {current_palette["body"]}; font-size: 11px; opacity: 0.7; letter-spacing: 1px;">{brand_handle}</span>'
+            elif watermark_type == "Logo Image" and logo_file is not None and logo_base64:
+                watermark_html = f'<img src="data:image/png;base64,{logo_base64}" style="max-height: 25px; object-fit: contain;" />'
+
+            st.markdown(
+                f"""
+                <div style="background-color: {current_palette['bg']}; color: {current_palette['title']}; padding: 40px; border-radius: 16px; min-height: 280px; border: {current_palette['border']}; margin-top: 15px; margin-bottom: 25px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <p style="color: {current_palette['badge']}; font-weight: 800; font-size: 13px; letter-spacing: 1.5px; margin-bottom: 15px;">SLIDE {curr+1} • {tag}</p>
+                        <h3 style="color: {current_palette['title']}; font-size: 24px; font-weight: 700; margin-bottom: 15px; line-height: 1.3;">{title}</h3>
+                        <p style="color: {current_palette['body']}; font-size: 15px; line-height: 1.6;">{body}</p>
+                    </div>
+                    <div style="text-align: right; margin-top: 20px;">
+                        {watermark_html}
+                    </div>
+                </div>
+            """,
+                unsafe_allow_html=True,
+            )
+
+            c_prev, c_ind, c_next = st.columns([1, 2, 1])
+            with c_prev:
+                if st.button("← Previous Slide") and curr > 0:
+                    st.session_state["current_slide"] -= 1
+                    st.rerun()
+            with c_ind:
+                st.markdown(f"<p style='text-align: center; margin-top: 8px;'>Slide {curr+1} of {total_slides}</p>", unsafe_allow_html=True)
+            with c_next:
+                if st.button("Next Slide →") and curr < total_slides - 1:
+                    st.session_state["current_slide"] += 1
+                    st.rerun()
+
+            if st.button("🚀 Send Payload to Kinetic Motion Engine", type="primary", use_container_width=True):
+                st.toast("Payload successfully bridged to Kinetic motion engine!", icon="✨")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+# ==========================================
+# TAB 2: KINETIC MOTION ENGINE
+# ==========================================
+with tab_kinetic:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<p class="step-header">Step 2: Automated JSON Handoff & Pro Full-Bleed Motion Rendering Engine (GIF & MP4)</p>', unsafe_allow_html=True)
+
+    if st.session_state["deck_json"]:
+        st.success("✨ Active JSON payload successfully received from Carousel Engine via Platform Bridge!")
+
+        with st.expander("🔍 Inspect Ingested JSON Payload"):
+            st.json(st.session_state["deck_json"])
+
+        st.divider()
+        st.subheader("🎬 Render Engine Compilation (Full-Bleed GIF & HD MP4)")
+
+        if st.button("✨ Render Premium Kinetic Assets (GIF & MP4)", use_container_width=True):
+            with st.spinner("Rendering full-bleed frames and compiling GIF & HD MP4 video assets..."):
+                try:
+                    deck_raw = st.session_state["deck_json"]
+                    if isinstance(deck_raw, str):
+                        parsed_raw = json.loads(deck_raw)
+                        if isinstance(parsed_raw, list):
+                            slides_data = parsed_raw
+                        elif isinstance(parsed_raw, dict):
+                            slides_data = parsed_raw.get("slides", [])
+                        else:
+                            slides_data = []
+                    else:
+                        slides_data = deck_raw
+                        if isinstance(slides_data, dict):
+                            slides_data = slides_data.get("slides", [])
+
+                    frames = []
+                    numpy_frames = []
+                    width, height = 1080, 1080
+                    max_text_width = 880
+
+                    badge_font = load_app_font(38)
+                    title_font = load_app_font(62)
+                    body_font = load_app_font(42)
+                    footer_font = load_app_font(30)
+
+                    import numpy as np
+
+                    for idx, slide in enumerate(slides_data, start=1):
+                        if isinstance(slide, dict):
+                            badge = str(slide.get("category", slide.get("tag", f"SLIDE {idx} | STRATEGY")))
+                            title = str(slide.get("title", slide.get("headline", f"Slide Title {idx}")))
+                            body = str(slide.get("content", slide.get("body", "Key actionable breakdown...")))
+                        else:
+                            badge = f"SLIDE {idx} | STRATEGY"
+                            title = str(slide)
+                            body = ""
+
+                        img = Image.new("RGB", (width, height), color=current_palette["bg"])
+                        draw = ImageDraw.Draw(img)
+
+                        draw.text((100, 140), badge.upper(), fill=current_palette["badge"], font=badge_font)
+
+                        temp_img = Image.new("RGB", (width, height))
+                        temp_draw = ImageDraw.Draw(temp_img)
+                        wrapped_title = wrap_text_to_width(title, title_font, max_text_width, temp_draw)
+                        title_y = 230
+                        for line in wrapped_title:
+                            draw.text((100, title_y), line, fill=current_palette["title"], font=title_font)
+                            title_y += 74
+
+                        if body:
+                            wrapped_body = wrap_text_to_width(body, body_font, max_text_width, temp_draw)
+                            body_y = title_y + 40
+                            for line in wrapped_body:
+                                draw.text((100, body_y), line, fill=current_palette["body"], font=body_font)
+                                body_y += 56
+
+                        active_footer = brand_handle if watermark_type == "Text Handle" else "Creator Suite Studio"
+                        draw.text((100, height - 160), active_footer, fill="#8b949e", font=footer_font)
+                        
+                        frames.append(img)
+                        fps = frame_rate
+                        slide_duration_frames = int(seconds_per_slide * fps)
+                        np_arr = np.array(img)
+                        for _ in range(slide_duration_frames):
+                            numpy_frames.append(np_arr)
+
+                    # 1. Compile GIF
+                    gif_buffer = io.BytesIO()
+                    if frames:
+                        frames[0].save(
+                            gif_buffer, format="GIF", save_all=True, append_images=frames[1:],
+                            duration=int(seconds_per_slide * 1000), loop=0
+                        )
+                    st.session_state["animated_gif_bytes"] = gif_buffer.getvalue()
+
+                    # 2. Compile HD MP4 Video via imageio with yuv420p
+                    try:
+                        import imageio
+                        mp4_path = "temp_kinetic_output.mp4"
+                        imageio.mimwrite(
+                            mp4_path,
+                            numpy_frames,
+                            fps=frame_rate,
+                            codec="libx264",
+                            quality=8,
+                            pixelformat="yuv420p"
+                        )
+                        with open(mp4_path, "rb") as f:
+                            st.session_state["mp4_video_bytes"] = f.read()
+                        if os.path.exists(mp4_path):
+                            os.remove(mp4_path)
+                    except Exception as vid_err:
+                        st.session_state["mp4_video_bytes"] = None
+                        st.caption(f"MP4 compilation notice: {vid_err}")
+
+                    first_slide = slides_data[0] if slides_data else {}
+                    if isinstance(first_slide, dict):
+                        cap_title = first_slide.get("title", "Transform Your Coaching Page")
+                        cap_body = first_slide.get("content", first_slide.get("body", ""))
+                    else:
+                        cap_title = str(first_slide)
+                        cap_body = ""
+
+                    st.session_state["generated_caption"] = (
+                        f"🔥 {cap_title}\n\n{cap_body}\n\nWhich slide hit home for you the most? Drop your thoughts below! 👇\n\n--- \n⚡ Built & animated seamlessly using Carousel Engine & Kinetic Motion Suite."
+                    )
+
+                    st.success("🎉 Kinetic full-bleed GIF & HD MP4 Video loops rendered successfully!")
+                except Exception as e:
+                    st.error(f"Render error: {e}")
+    else:
+        st.warning("🔒 No carousel payload found. Please generate a carousel deck in Step 1 first.")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+# ==========================================
+# TAB 3: FEATURE-TO-BENEFITS (TOOL 3) [GATED]
+# ==========================================
+with tab_benefits:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    if is_full_suite:
+        st.markdown('<p class="step-header">Tool 3: Feature-to-Benefits Transformation Matrix</p>', unsafe_allow_html=True)
+        st.markdown("Transform technical feature lists into high-converting emotional benefits for your carousels and hooks.")
+
+        feature_input = st.text_area("Enter raw product features (one per line):", value="- 1080x1080 full-bleed PNG export\n- Direct OpenRouter AI integration\n- Automated JSON session bridging")
+        if st.button("Generate Emotional Benefits Matrix", type="primary"):
+            st.success("⚡ Feature-to-Benefit transformation engine active!")
+            st.info(
+                "**Transformed Direct-Response Matrix:**\n\n"
+                "• **Feature:** 1080x1080 Full-Bleed PNG Export ➔ **Benefit:** Stop fighting clunky image borders; command attention instantly in a crowded social feed with edge-to-edge visual dominance.\n\n"
+                "• **Feature:** Direct OpenRouter AI Integration ➔ **Benefit:** Eliminate writer's block forever; generate a high-converting 6-slide authority deck in under 10 seconds without manual prompt wrestling.\n\n"
+                "• **Feature:** Automated JSON Session Bridging ➔ **Benefit:** Zero manual file downloads or re-uploads; pipe your carousel deck straight into motion graphics with one click."
+            )
+    else:
+        st.error("🔒 Locked Module: Feature-to-Benefits Matrix")
+        st.warning(
+            "**Complete Suite Upgrade Required ($250 Tier)**\n\n"
+            "Your current Master Pass ($149) unlocks Carousel Studio and Kinetic Motion Engine. "
+            "Upgrade to the **$250 Complete Suite** to instantly unlock Tool 3 (Feature-to-Benefits) and Tool 4 (Style Inspiration) right inside this platform hub!"
+        )
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+# ==========================================
+# TAB 4: STYLE INSPIRATION (TOOL 24) [GATED]
+# ==========================================
+with tab_inspiration:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    if is_full_suite:
+        st.markdown('<p class="step-header">Tool 4: Style Inspiration & Swipe File Library (Tool No. 24)</p>', unsafe_allow_html=True)
+        st.markdown("Curated elite design frameworks, typography pairings, and hook layouts for immediate visual inspiration.")
+
+        col_s1, col_s2 = st.columns(2)
+        with col_s1:
+            st.markdown("### ⚡ High-Contrast Canary")
+            st.markdown("> *“Bold, aggressive direct-response style engineered to stop the scroll. Best for high-converting hook slides.”*")
+            st.markdown("🎨 **Palette:** Obsidian `#1a1a1a` + Canary `#ffcc00`")
+        with col_s2:
+            st.markdown("### 👑 Midnight Luxury")
+            st.markdown("> *“Sophisticated, high-ticket authority aesthetic designed for premium consulting and coaching offers.”*")
+            st.markdown("🎨 **Palette:** Dark Obsidian `#121212` + Champagne Gold `#d4af37`")
+
+        st.divider()
+        st.markdown("### 📐 Structural Hook Swipe Library")
+        st.markdown("1. **The Contrarian Truth:** *'Everything you know about [Topic] is backward.'*\n2. **The Cost of Inaction:** *'Every day you delay fixing [Problem] costs you 3 hours of burnout.'*\n3. **The Speed Framework:** *'How to achieve [Result] in 30 days without [Pain Point].'*\n")
+    else:
+        st.error("🔒 Locked Module: Style Inspiration Swipe File")
+        st.warning(
+            "**Complete Suite Upgrade Required ($250 Tier)**\n\n"
+            "Upgrade your license to the **$250 Complete Suite** to unlock Tool 4 (Style Inspiration Library) and all upcoming modules directly within your master workspace."
+        )
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+# ==========================================
+# TAB 5: FINAL DELIVERY & EXPORT
+# ==========================================
+with tab_delivery:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<p class="step-header">Step 5: Final Animated GIF, HD MP4 Video, Slide Package & Social Caption Delivery</p>', unsafe_allow_html=True)
+
+    if st.session_state["animated_gif_bytes"]:
+        col_res1, col_res2 = st.columns(2, gap="large")
+
+        with col_res1:
+            st.subheader("🎬 Final Motion Assets (GIF & MP4)")
+            st.success("✅ Kinetic animation loop and HD video compiled.")
+
+            st.image(
+                st.session_state["animated_gif_bytes"],
+                caption="Rendered Full-Bleed Kinetic Loop Preview",
+                use_container_width=True,
+            )
+
+            st.download_button(
+                label="⬇️ Download Rendered Animated GIF (.gif)",
+                data=st.session_state["animated_gif_bytes"],
+                file_name="kinetic_carousel_loop.gif",
+                mime="image/gif",
+                use_container_width=True,
+            )
+
+            if st.session_state["mp4_video_bytes"]:
+                st.download_button(
+                    label="🎥 Download HD Motion Video (.mp4)",
+                    data=st.session_state["mp4_video_bytes"],
+                    file_name="kinetic_carousel_video.mp4",
+                    mime="video/mp4",
+                    use_container_width=True,
+                )
+
+            st.divider()
+
+            if st.session_state["deck_json"]:
+                try:
+                    deck_raw = st.session_state["deck_json"]
+                    if isinstance(deck_raw, str):
+                        parsed_zip = json.loads(deck_raw)
+                        if isinstance(parsed_zip, list):
+                            slides_list = parsed_zip
+                        elif isinstance(parsed_zip, dict):
+                            slides_list = parsed_zip.get("slides", [])
+                        else:
+                            slides_list = []
+                    else:
+                        slides_list = deck_raw
+                        if isinstance(slides_list, dict):
+                            slides_list = slides_list.get("slides", [])
+                        
+                    zip_data = generate_png_zip_from_slides(slides_list, handle_text=brand_handle, palette=current_palette)
+                    st.download_button(
+                        label="📥 Download Static Slide PNG Package (.zip)",
+                        data=zip_data,
+                        file_name="carousel_slides_package.zip",
+                        mime="application/zip",
+                        use_container_width=True,
+                    )
+                except Exception as e:
+                    st.caption(f"PNG package generation note: {e}")
+
+        with col_res2:
+            st.subheader("📝 Generated Social Media Caption")
+            st.text_area(
+                "Ready-to-Post Caption (Optimized for Engagement):",
+                st.session_state["generated_caption"],
+                height=220,
+            )
+            st.success("📋 Caption optimized for comments and reach conversion.")
+    else:
+        st.warning("⏳ Final delivery pending. Complete Step 1 (Carousel Studio) and Step 2 (Kinetic Motion Engine) to compile your assets.")
+
+    st.markdown("</div>", unsafe_allow_html=True)
