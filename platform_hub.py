@@ -544,4 +544,136 @@ elif "Kinetic Motion Engine" in selected_main_tab:
                         imageio.mimwrite(
                             mp4_path,
                             numpy_frames,
-                            fps=frame_rate
+                            fps=frame_rate,
+                            codec="libx264",
+                            quality=8,
+                            pixelformat="yuv420p"
+                        )
+                        with open(mp4_path, "rb") as f:
+                            st.session_state["mp4_video_bytes"] = f.read()
+                        if os.path.exists(mp4_path):
+                            os.remove(mp4_path)
+                    except Exception as vid_err:
+                        st.session_state["mp4_video_bytes"] = None
+                        st.caption(f"MP4 compilation notice: {vid_err}")
+
+                    first_slide = slides_data[0] if slides_data else {}
+                    if isinstance(first_slide, dict):
+                        cap_title = first_slide.get("title", "Transform Your Coaching Page")
+                        cap_body = first_slide.get("content", first_slide.get("body", ""))
+                    else:
+                        cap_title = str(first_slide)
+                        cap_body = ""
+
+                    st.session_state["generated_caption"] = (
+                        f"🔥 {cap_title}\n\n{cap_body}\n\nWhich slide hit home for you the most? Drop your thoughts below! 👇\n\n--- \n⚡ Built & animated seamlessly using Carousel Engine & Kinetic Motion Suite."
+                    )
+
+                    st.success("🎉 Kinetic full-bleed GIF & HD MP4 Video loops rendered successfully!")
+                except Exception as e:
+                    st.error(f"Render error: {e}")
+    else:
+        st.warning("🔒 No carousel payload found. Please generate a carousel deck in Step 1 first.")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+# ==========================================
+# TAB 3: FEATURE-TO-BENEFITS (TOOL 3)
+# ==========================================
+elif "Feature-to-Benefits" in selected_main_tab:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    if is_full_suite:
+        st.markdown("<h1 style='text-align: center;'>🛍️ E-Commerce Feature-to-Benefit Translator</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: gray;'>Turn dry product specifications into high-converting customer benefits designed to skyrocket your online sales.</p>", unsafe_allow_html=True)
+        st.divider()
+
+        col_i1, col_i2 = st.columns(2)
+        with col_i1:
+            f2b_product = st.text_input("Product Name:", value="Ergonomic Garden Kneeler & Seat")
+        with col_i2:
+            f2b_buyer = st.text_input("Target Buyer Persona:", value="Home gardeners and seniors who love planting but suffer from sore knees and back pain.")
+
+        f2b_features = st.text_area("Paste Raw Product Features / Specifications (one per line):", height=130, value="- Thick EVA foam padding cushion\n- Heavy-duty steel frame supporting up to 330 lbs\n- Detachable tool pouch with deep pockets\n- Folds flat in one click for easy garage storage")
+
+        if st.button("🚀 Translate Features into High-Converting Benefits", type="primary"):
+            with st.spinner("Translating technical specs into irresistible customer benefits..."):
+                parsed_features = [line.strip().lstrip("-*•").strip() for line in f2b_features.split("\n") if line.strip()]
+                
+                benefit_templates = [
+                    ("Protects your joints", "say goodbye to aching knees and soreness after a long afternoon in the soil."),
+                    ("Provides rock-solid safety", "feel completely secure and stable whether sitting upright or kneeling down."),
+                    ("Keeps tools right at your fingertips", "eliminate frustrating trips back to the shed by storing your clippers and gloves on your hip."),
+                    ("Saves precious garage space", "tuck it away neatly in seconds with zero hassle when your gardening day is done.")
+                ]
+                
+                benefit_bullets = ""
+                table_rows = ""
+                for idx, feat in enumerate(parsed_features):
+                    angle_title, angle_benefit = benefit_templates[idx % len(benefit_templates)]
+                    benefit_bullets += f"- **{angle_title}:** Featuring {feat.lower()}, so you can {angle_benefit}\n"
+                    table_rows += f"| {feat} | {angle_title} ({angle_benefit}) | High |\n"
+
+                translation_report = (
+                    f"# E-Commerce Feature-to-Benefit Optimization Report\n"
+                    f"Product: {f2b_product}\n"
+                    f"Category: {product_category}\n"
+                    f"Target Buyer: {f2b_buyer}\n"
+                    f"Tone: {output_tone}\n\n"
+                    f"## 🎁 1. Feature-to-Benefit Translation Matrix\n"
+                    f"{benefit_bullets}\n"
+                    f"## ✍️ 2. Optimized Listing Bullet Points\n"
+                    f"- **Zero Joint Strain:** Thick cushioning absorbs impact so you can garden longer without physical discomfort.\n"
+                    f"- **Durable Stability:** Robust frame engineered for secure support and long-lasting seasonal use.\n"
+                    f"- **All-in-One Convenience:** Built-in tool pouches keep your gear organized right where you need it.\n"
+                    f"- **Effortless Storage:** Folds flat instantly, making it a breeze to pack up and store away.\n\n"
+                    f"## 🎯 3. High-Converting Product Description Hook\n"
+                    f"\"Tired of aching joints cutting your gardening sessions short? Meet the {f2b_product}—custom-built to give {f2b_buyer} the comfort, support, and ease you deserve. Cultivate your garden, not your back pain!\""
+                )
+
+                st.success("🎉 Product features successfully translated into high-impact customer benefits!")
+                st.session_state["latest_translation_report"] = translation_report
+
+                sub_t1, sub_t2, sub_t3 = st.tabs(["📊 Optimization Report", "🔍 Feature-Benefit Table", "📦 JSON Data Export"])
+                with sub_t1:
+                    st.markdown(translation_report)
+                    st.download_button("📥 Download Copy Report (.txt)", data=translation_report, file_name="listing_copy_report.txt", mime="text/plain")
+                with sub_t2:
+                    st.markdown("| Raw Product Feature | Translated Customer Benefit | Sales Impact |\n|---|---|---|\n" + table_rows)
+                with sub_t3:
+                    json_pkg = {"product": f2b_product, "features": parsed_features, "report": translation_report}
+                    st.code(json.dumps(json_pkg, indent=2), language="json")
+
+        if "latest_translation_report" in st.session_state and st.session_state["latest_translation_report"]:
+            st.divider()
+            st.markdown("### 🔄 Send Forward to Carousel Studio")
+            st.info("Want to turn these generated emotional benefits into a high-converting Instagram carousel deck instantly?")
+            if st.button("✨ Send Output Forward & Use in Carousel Studio", type="primary"):
+                st.session_state["preflight_benefits"] = f"Product: {f2b_product} | Benefits: {st.session_state['latest_translation_report'][:300]}..."
+                st.session_state["active_tab_selection"] = "1. 🎨 Carousel Engine Studio"
+                st.toast("Benefits bridged successfully to Carousel Studio!", icon="✨")
+                st.rerun()
+
+    else:
+        st.error("🔒 Locked Module: Feature-to-Benefits Matrix")
+        st.warning(
+            "**Complete Suite Upgrade Required ($250 Tier)**\n\n"
+            "Your current Master Pass ($149) unlocks Carousel Studio and Kinetic Motion Engine. "
+            "Upgrade to the **$250 Complete Suite** to instantly unlock Tool 3 (Feature-to-Benefits) and Tool 4 (Style Inspiration) right inside this platform hub!"
+        )
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+# ==========================================
+# TAB 4: STYLE INSPIRATION & ANALYSIS ENGINE (SIA) [INTEGRATED & DUAL-VECTOR]
+# ==========================================
+elif "Style Inspiration" in selected_main_tab:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    if is_full_suite:
+        st.markdown("<h1 style='text-align: center;'>✨ SIA: Style Inspiration & Analysis Engine</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: gray;'>Deconstruct high-performing creator slides into actionable content, typography, and advanced photographic visual design principles.</p>", unsafe_allow_html=True)
+        st.divider()
+
+        col_u1, col_u2 = st.columns([1, 1], gap="large")
+
+        with
