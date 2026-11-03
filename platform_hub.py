@@ -921,4 +921,4 @@ elif "Style Inspiration" in selected_main_tab:
                 
             with col_ex2:
                 json_content = json.dumps({
-                    "focus_vector": st.session_state
+                    "focus_vector": st.session_state})
