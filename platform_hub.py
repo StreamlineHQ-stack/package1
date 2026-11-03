@@ -537,7 +537,7 @@ elif "Kinetic Motion Engine" in selected_main_tab:
                         frames[0].save(gif_buffer, format="GIF", save_all=True, append_images=frames[1:], duration=int(seconds_per_slide * 1000), loop=0)
                     st.session_state["animated_gif_bytes"] = gif_buffer.getvalue()
 
-                    # 2. Compile HD MP4 Video via imageio with yuv420p
+                  # 2. Compile HD MP4 Video via imageio with yuv420p
                     try:
                         import imageio
                         mp4_path = "temp_kinetic_output.mp4"
@@ -549,3 +549,10 @@ elif "Kinetic Motion Engine" in selected_main_tab:
                             quality=8,
                             pixelformat="yuv420p"
                         )
+                        with open(mp4_path, "rb") as f:
+                            st.session_state["mp4_video_bytes"] = f.read()
+                        if os.path.exists(mp4_path):
+                            os.remove(mp4_path)
+                    except Exception as vid_err:
+                        st.session_state["mp4_video_bytes"] = None
+                        st.caption(f"MP4 compilation notice: {vid_err}")
