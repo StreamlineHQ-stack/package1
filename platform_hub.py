@@ -547,4 +547,4 @@ elif "Kinetic Motion Engine" in selected_main_tab:
                             fps=frame_rate,
                             codec="libx264",
                             quality=8,
-                            pixelformat="yuv42
+                            pixelformat="yuv42"
