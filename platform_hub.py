@@ -1,7 +1,7 @@
 # platform_hub.py • Master Platform Hub (Onboarding & Tool Router)
 import streamlit as st
 from license_verifier import verify_license_sidebar
-import feature_to_benefit_app 
+import feature_to_benefit_app
 from carousel_studio_module import render_carousel_studio
 
 st.set_page_config(
