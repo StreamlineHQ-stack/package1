@@ -1,9 +1,13 @@
 # feature_to_benefit_app.py • Feature-to-Benefits E-Commerce & Creator Suite
 import streamlit as st
-import json
+import docx
+from docx.shared import Inches, Pt, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 import io
-from docx import Document
-
+from app_engine import generate_carousel_deck
 def render():
     st.markdown("<h1 style='text-align: center;'>💡 Feature-to-Benefits E-Commerce Suite</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: gray;'>Translate raw product specs into high-converting customer benefits, bullet points, hooks, and clean carousel scripts.</p>", unsafe_allow_html=True)
