@@ -153,19 +153,32 @@ def render():
                 use_container_width=True,
                 key="f2b_dl_docx"
             )
-        with col_bridge:
+       with col_bridge:
             if st.button("🚀 Send Downstream Script to Carousel Studio ➔", type="primary", use_container_width=True, key="f2b_bridge_btn"):
-                fallback_script = "SLIDE 1: Ergonomic Garden Kneeler\nSLIDE 2: Protect your joints\nSLIDE 3: Durable steel frame\nSLIDE 4: Detachable tool pouches\nSLIDE 5: Folds flat instantly\nSLIDE 6: Get yours today!"
-                raw_script = st.session_state.get("preflight_benefits", fallback_script)
-                deck_res, status_msg = generate_carousel_deck(raw_script, slide_count=6, mode="custom")
-                st.session_state["deck_json"] = deck_res
-                st.session_state["engine_status"] = status_msg
+                # Pass the structured carousel script directly into the deck json
+                if "f2b_carousel" in st.session_state:
+                    st.session_state["deck_json"] = st.session_state["f2b_carousel"]
+                else:
+                    # Fallback structured slides if needed
+                    st.session_state["deck_json"] = [
+                        {"category": "HOOK", "title": "Tired of aching joints cutting your gardening sessions short?", "content": "Meet the Ergonomic Garden Kneeler & Seat."},
+                        {"category": "PROBLEM", "title": "Traditional gardening leaves you sore.", "content": "Hard earth causes severe knee and back strain."},
+                        {"category": "SOLUTION", "title": "Protect your knees with EVA padding.", "content": "Thick foam cushions your joints on any terrain."},
+                        {"category": "STABILITY", "title": "Built for absolute safety.", "content": "Supports up to 330 lbs with a sturdy steel frame."},
+                        {"category": "CONVENIENCE", "title": "Detachable tool pouches.", "content": "Keep your gear right on your hip."},
+                        {"category": "CTA", "title": "Ready to garden in total comfort?", "content": "Comment GARDEN to claim yours today!"}
+                    ]
+                st.session_state["engine_status"] = "⚡ Direct Handoff Active"
                 st.session_state["current_slide"] = 0
                 st.session_state["active_tool_idx"] = 0
                 st.success("⚡ Script successfully handed over to Carousel Studio!")
                 try:
                     st.rerun()
                 except AttributeError:
+                    try:
+                        st.experimental_rerun()
+                    except Exception:
+                        pass
                     try:
                         st.experimental_rerun()
                     except Exception:
