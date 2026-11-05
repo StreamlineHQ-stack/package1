@@ -154,4 +154,4 @@ def render():
                 st.session_state["deck_json"] = st.session_state["f2b_carousel"]
                 st.session_state["active_tool_idx"] = 0
                 st.success("⚡ Script successfully handed over to Carousel Studio!")
-                st.experimental_rerun()
+             
