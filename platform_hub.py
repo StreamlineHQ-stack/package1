@@ -77,60 +77,62 @@ with st.sidebar:
     else:
         st.success("✅ Core Master Pass Unlocked ($149 Tier)")
 
-    st.divider()
-    st.markdown("### 🖼️ Enhanced Background & Visual Style Engine")
-    
-    style_mode_options = [
-        "✨ Smart AI Contextual Match",
-        "🏛️ Unified Editorial Motif",
-        "📂 Custom User Images",
-        "☕ Terracotta Background & White Font",
-        "🎯 Exact Inspiration Match (Objects & Layout)"
-    ]
-    
-    if st.session_state["bg_style_mode"] not in style_mode_options:
-        st.session_state["bg_style_mode"] = style_mode_options[0]
+    # --- SHOW BACKGROUND ENGINE ONLY WHEN RELEVANT ---
+    if selected_main_tab == tab_names[0]:
+        st.divider()
+        st.markdown("### 🖼️ Enhanced Background & Visual Style Engine")
         
-    default_idx = style_mode_options.index(st.session_state["bg_style_mode"])
+        style_mode_options = [
+            "✨ Smart AI Contextual Match",
+            "🏛️ Unified Editorial Motif",
+            "📂 Custom User Images",
+            "☕ Terracotta Background & White Font",
+            "🎯 Exact Inspiration Match (Objects & Layout)"
+        ]
+        
+        if st.session_state["bg_style_mode"] not in style_mode_options:
+            st.session_state["bg_style_mode"] = style_mode_options[0]
+            
+        default_idx = style_mode_options.index(st.session_state["bg_style_mode"])
 
-    bg_style_mode = st.radio(
-        "Style Mode Control:",
-        style_mode_options,
-        index=default_idx,
-        key="bg_style_mode_radio"
-    )
-    st.session_state["bg_style_mode"] = bg_style_mode
-
-    unified_motif_choice = st.session_state.get("unified_motif_choice", "Sunset")
-    custom_bg_url = ""
-
-    if bg_style_mode == "🏛️ Unified Editorial Motif":
-        st.markdown("---")
-        st.markdown("#### 🌸 Custom Motif Theme")
-        unified_motif_choice = st.text_input(
-            "Enter Motif Theme (e.g., Sunset, Rose, Luxury, Ocean, Minimalist):",
-            value=unified_motif_choice,
-            key="motif_custom_input"
+        bg_style_mode = st.radio(
+            "Style Mode Control:",
+            style_mode_options,
+            index=default_idx,
+            key="bg_style_mode_radio"
         )
-        st.session_state["unified_motif_choice"] = unified_motif_choice
+        st.session_state["bg_style_mode"] = bg_style_mode
 
-    elif bg_style_mode == "📂 Custom User Images":
-        st.markdown("---")
-        uploaded_file = st.file_uploader("Upload Image File:", type=["png", "jpg", "jpeg"], key="custom_img_uploader")
-        if uploaded_file is not None:
-            st.session_state["custom_uploaded_bg_b64"] = base64.b64encode(uploaded_file.getvalue()).decode("utf-8")
-            st.success("✅ Uploaded!")
+        unified_motif_choice = st.session_state.get("unified_motif_choice", "Sunset")
+        custom_bg_url = ""
 
-    elif bg_style_mode == "🎯 Exact Inspiration Match (Objects & Layout)":
-        st.markdown("---")
-        st.markdown("#### 🎯 Inspiration Reference Uploader")
-        insp_file = st.file_uploader("Upload Reference Slide:", type=["png", "jpg", "jpeg"], key="exact_insp_uploader")
-        if insp_file is not None:
-            try:
-                st.session_state["exact_inspiration_b64"] = base64.b64encode(insp_file.getvalue()).decode("utf-8")
-                st.success("✅ Inspiration reference locked!")
-            except Exception as e:
-                st.error(f"Error loading reference: {e}")
+        if bg_style_mode == "🏛️ Unified Editorial Motif":
+            st.markdown("---")
+            st.markdown("#### 🌸 Custom Motif Theme")
+            unified_motif_choice = st.text_input(
+                "Enter Motif Theme (e.g., Sunset, Rose, Luxury, Ocean, Minimalist):",
+                value=unified_motif_choice,
+                key="motif_custom_input"
+            )
+            st.session_state["unified_motif_choice"] = unified_motif_choice
+
+        elif bg_style_mode == "📂 Custom User Images":
+            st.markdown("---")
+            uploaded_file = st.file_uploader("Upload Image File:", type=["png", "jpg", "jpeg"], key="custom_img_uploader")
+            if uploaded_file is not None:
+                st.session_state["custom_uploaded_bg_b64"] = base64.b64encode(uploaded_file.getvalue()).decode("utf-8")
+                st.success("✅ Uploaded!")
+
+        elif bg_style_mode == "🎯 Exact Inspiration Match (Objects & Layout)":
+            st.markdown("---")
+            st.markdown("#### 🎯 Inspiration Reference Uploader")
+            insp_file = st.file_uploader("Upload Reference Slide:", type=["png", "jpg", "jpeg"], key="exact_insp_uploader")
+            if insp_file is not None:
+                try:
+                    st.session_state["exact_inspiration_b64"] = base64.b64encode(insp_file.getvalue()).decode("utf-8")
+                    st.success("✅ Inspiration reference locked!")
+                except Exception as e:
+                    st.error(f"Error loading reference: {e}")
 
     st.divider()
     if st.button("🔄 Reset Workspace", use_container_width=True):
@@ -144,6 +146,9 @@ with st.sidebar:
     slide_count = st.slider("Target Slide Count:", 4, 10, 6)
 
 current_palette = {"bg": "#a85732", "border": "1px solid #8c4728", "badge": "#ffcc00", "title": "#ffffff", "body": "#f4f1ea"}
+bg_style_mode = st.session_state.get("bg_style_mode", "✨ Smart AI Contextual Match")
+unified_motif_choice = st.session_state.get("unified_motif_choice", "Sunset")
+custom_bg_url = ""
 
 
 # ==========================================
@@ -169,7 +174,6 @@ if "Carousel Engine Studio" in selected_main_tab:
     with st.container(border=True):
         st.markdown("### Step 1: Build Your Carousel")
         
-        # --- FEATURE-TO-BENEFIT HANDOFF BRIDGE ---
         incoming_benefits = st.session_state.get("preflight_benefits", "")
         if incoming_benefits:
             st.success("✨ **Transferred Feature-to-Benefit Data Ready for Carousel Generation!**")
