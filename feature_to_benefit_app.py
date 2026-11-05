@@ -155,7 +155,9 @@ def render():
             )
         with col_bridge:
             if st.button("🚀 Send Downstream Script to Carousel Studio ➔", type="primary", use_container_width=True, key="f2b_bridge_btn"):
-                deck_res, status_msg = generate_carousel_deck(st.session_state["preflight_benefits"], slide_count=6, mode="custom")
+                fallback_script = "SLIDE 1: Ergonomic Garden Kneeler\nSLIDE 2: Protect your joints\nSLIDE 3: Durable steel frame\nSLIDE 4: Detachable tool pouches\nSLIDE 5: Folds flat instantly\nSLIDE 6: Get yours today!"
+                raw_script = st.session_state.get("preflight_benefits", fallback_script)
+                deck_res, status_msg = generate_carousel_deck(raw_script, slide_count=6, mode="custom")
                 st.session_state["deck_json"] = deck_res
                 st.session_state["engine_status"] = status_msg
                 st.session_state["current_slide"] = 0
