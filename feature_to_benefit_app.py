@@ -150,8 +150,17 @@ def render():
                 key="f2b_dl_docx"
             )
         with col_bridge:
-            if st.button("⚡ Send Downstream Script to Carousel Studio ➔", type="primary", use_container_width=True, key="f2b_bridge_btn"):
-                st.session_state["deck_json"] = st.session_state["f2b_carousel"]
+            if st.button("🚀 Send Downstream Script to Carousel Studio ➔", type="primary", use_container_width=True, key="f2b_bridge_btn"):
+                deck_res, status_msg = generate_carousel_deck(st.session_state["preflight_benefits"], slide_count=6, mode="custom")
+                st.session_state["deck_json"] = deck_res
+                st.session_state["engine_status"] = status_msg
+                st.session_state["current_slide"] = 0
                 st.session_state["active_tool_idx"] = 0
                 st.success("⚡ Script successfully handed over to Carousel Studio!")
-             
+                try:
+                    st.rerun()
+                except AttributeError:
+                    try:
+                        st.experimental_rerun()
+                    except Exception:
+                        pass
