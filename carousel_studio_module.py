@@ -310,7 +310,7 @@ def render_carousel_studio():
             # Action buttons for Instant JSON Bridge & Download
             col_bridge_btn, col_download_btn = st.columns(2)
             
-            with col_bridge_btn:
+          with col_bridge_btn:
                 if st.button("🚀 Send Deck to Kinetic JSON View ➔", type="primary", use_container_width=True, key="cs_kinetic_push"):
                     st.session_state["kinetic_json_output"] = json.dumps(slides, indent=2)
                     st.success("⚡ Deck successfully locked into Kinetic JSON view below!")
