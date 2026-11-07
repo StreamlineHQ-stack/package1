@@ -1,0 +1,59 @@
+import base64
+import json
+from io import BytesIO
+from PIL import Image
+from openai import OpenAI
+
+def image_to_data_url(uploaded_file, max_dimension=1600):
+    if hasattr(uploaded_file, "getvalue"):
+        image = Image.open(BytesIO(uploaded_file.getvalue())).convert("RGB")
+    else:
+        image = Image.open(uploaded_file).convert("RGB")
+    image.thumbnail((max_dimension, max_dimension))
+    buffer = BytesIO()
+    image.save(buffer, format="JPEG", quality=88)
+    encoded = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    return f"data:image/jpeg;base64,{encoded}", image
+
+def analyze_image(api_key, model, image_data_url, user_focus="Analyze overall design intent."):
+    client = OpenAI(api_key=api_key)
+    system_prompt = """
+    You are an expert visual designer and design-analysis assistant.
+    Analyze the uploaded slide screenshot specifically to help create a NEW,
+    similar-but-not-identical background for a Canva carousel or presentation.
+    Return ONLY valid JSON matching this schema:
+    {
+      "design_style": "short description",
+      "visual_mood": ["..."],
+      "design_intent": "what the design appears to be trying to achieve",
+      "palette": [
+        {"name": "color name", "hex": "#RRGGBB", "role": "background/accent/text/etc."}
+      ],
+      "composition": {
+        "layout": "description",
+        "visual_weight": "where attention is concentrated",
+        "negative_space": "where open space is preserved"
+      },
+      "background_generation_brief": "concise actionable brief"
+    }
+    """
+    prompt = system_prompt + "\n\nAdditional user focus: " + user_focus
+    response = client.chat.completions.create(
+        model=model if model else "gpt-4o-mini",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": image_data_url}}
+                ]
+            }
+        ],
+        max_tokens=1000
+    ]
+    raw = response.choices[0].message.content.strip()
+    if raw.startswith("```"):
+        raw = raw.split("\n", 1)[1]
+        if raw.endswith("```"):
+            raw = raw[:-3].strip()
+    return json.loads(raw)
