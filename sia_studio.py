@@ -11,6 +11,7 @@ from app_engine import generate_carousel_deck
 from framework_data import FRAMEWORK_LIBRARY
 from sia_terracotta_module import build_terracotta_deck
 from sia_ai_context_module import build_ai_context_deck
+from sia_editorial_motif_module import build_unified_editorial_deck
 from background_engine import get_modular_background
 from smart_ai_engine import get_smart_ai_background
 
@@ -79,12 +80,10 @@ def render_sia_slide_to_image(slide_data, slide_num, total_slides, style_mode="T
     width, height = 1080, 1080
     max_text_width = 880
     
-    # Base obsidian or terracotta canvas
     bg_hex = "#a85732" if "Terracotta" in style_mode else "#0b0f19"
     img = Image.new("RGB", (width, height), color=bg_hex)
     draw = ImageDraw.Draw(img)
     
-    # 1. Pull clean title, body, category directly from sia_preview_deck if available
     title = ""
     body = ""
     category = ""
@@ -97,7 +96,6 @@ def render_sia_slide_to_image(slide_data, slide_num, total_slides, style_mode="T
             title = str(original_slide.get("title", original_slide.get("headline", "")))
             body = str(original_slide.get("content", original_slide.get("body", "")))
             
-    # Fallback to slide_data if preview_deck doesn't have it
     if not title:
         title = str(slide_data.get("title", slide_data.get("headline", f"Slide {slide_num}")))
     if not body:
@@ -106,10 +104,9 @@ def render_sia_slide_to_image(slide_data, slide_num, total_slides, style_mode="T
         raw_cat = slide_data.get("category") or slide_data.get("tag") or f"SLIDE {slide_num}"
         category = str(raw_cat).upper()
         
-    # Extract banner image (Custom User Image or rendered_html or fallback)
     bg_url = ""
     if "Custom User Images" in style_mode and st.session_state.get("sia_custom_img_bytes"):
-        pass # Handled via bytes below
+        pass
     else:
         html_content = slide_data.get("rendered_html", "")
         if html_content:
@@ -140,7 +137,6 @@ def render_sia_slide_to_image(slide_data, slide_num, total_slides, style_mode="T
     except Exception:
         pass
         
-    # Redraw draw object after pasting
     draw = ImageDraw.Draw(img)
     
     try:
@@ -242,7 +238,6 @@ def render_visual_preview(styled_deck):
             st.rerun()
 
 def render_sia_studio():
-    # --- Check for Kinetic UI Dedicated View Mode (Local Native Bridge) ---
     if st.session_state.get("active_view") == "kinetic_ui":
         st.markdown("<h1 style='text-align: center;'>🧬 Kinetic UI Workspace (Local Suite)</h1>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; color: gray;'>High-performance local motion rendering engine running natively inside SIA.</p>", unsafe_allow_html=True)
@@ -308,13 +303,11 @@ def render_sia_studio():
                         img = Image.open(io.BytesIO(png_bytes)).convert("RGB")
                         frames.append(img)
 
-                    # Render GIF buffer
                     gif_buffer = io.BytesIO()
                     if frames:
                         frames[0].save(gif_buffer, format="GIF", save_all=True, append_images=frames[1:], duration=int(seconds_per_slide * 1000), loop=0)
                     st.session_state["sia_last_rendered_gif"] = gif_buffer.getvalue()
 
-                    # Render MP4 video buffer
                     mp4_bytes = None
                     try:
                         import imageio
@@ -346,7 +339,6 @@ def render_sia_studio():
                     
                 st.success("🎉 Kinetic Loop rendered successfully from your actual deck cards!")
 
-            # --- LIVE MP4 VIDEO PREVIEW & DUAL EXPORT PACKAGE ---
             if "sia_last_rendered_mp4" in st.session_state and st.session_state["sia_last_rendered_mp4"]:
                 st.markdown("---")
                 st.markdown("#### 👁️ Live Loop Preview")
@@ -396,7 +388,6 @@ def render_sia_studio():
             )
         return
 
-    # --- STANDARD SIA STUDIO VIEW ---
     st.markdown("### ✨ Style Inspiration & Analysis Studio (SIA)")
     st.markdown("Upload inspiration swipes, generate content via Carousel Engine engines, and render modular styled decks.")
     
@@ -520,7 +511,6 @@ def render_sia_studio():
                     st.success("🎉 Framework Carousel Deck generated successfully!")
                     st.rerun()
 
-        # --- White Background Preview & Edit Deck ---
         if st.session_state.get("sia_preview_deck"):
             st.divider()
             st.markdown("### 📄 White Background Preview & Edit Deck")
@@ -568,8 +558,8 @@ def render_sia_studio():
             
             prev_mode = st.session_state.get("sia_current_active_mode", None)
             
-            # --- CUSTOM IMAGE UPLOADER FOR OPTION A ---
             custom_img_base64 = ""
+            motif_theme_input = "flower"
             if "Custom User Images" in sia_mode:
                 st.markdown("#### 📂 Custom Asset Uploader")
                 custom_file = st.file_uploader("Upload Brand/Banner Asset", type=["png", "jpg", "jpeg"], key="sia_custom_asset_upload")
@@ -582,8 +572,11 @@ def render_sia_studio():
                     st.success("✅ Brand asset loaded successfully!")
                 elif "sia_custom_img_b64" in st.session_state:
                     custom_img_base64 = st.session_state["sia_custom_img_b64"]
-            
-            # --- STRICT CACHE-WIPING & WORKSPACE PURGING ---
+            elif "Unified Editorial Motif" in sia_mode:
+                st.markdown("#### 🏛️ Thematic Motif Custom Input")
+                motif_theme_input = st.text_input("Enter Theme (e.g. flower, rose, beach, happy people):", value="flower", key="sia_motif_theme_input")
+                st.session_state["sia_motif_theme_input"] = motif_theme_input
+
             if prev_mode != sia_mode:
                 st.session_state["sia_rendered_output"] = None
                 st.session_state["sia_current_active_mode"] = sia_mode
@@ -621,6 +614,12 @@ def render_sia_studio():
                 st.session_state["sia_active_bg_hex"] = "#111827"
                 st.session_state["sia_rendered_output"] = build_ai_context_deck(deck)
                 st.success("⚡ [Module 2 Rendered]: AI Contextual cards built successfully!")
+                st.rerun()
+            elif "Unified Editorial Motif" in active_selected_mode:
+                st.session_state["sia_active_bg_hex"] = "#111827"
+                theme_val = st.session_state.get("sia_motif_theme_input", "flower")
+                st.session_state["sia_rendered_output"] = build_unified_editorial_deck(deck, theme_val)
+                st.success(f"🏛️ [Module 4 Rendered]: Unified Editorial Motif [{theme_val}] cards built successfully!")
                 st.rerun()
             elif "Custom User Images" in active_selected_mode:
                 st.session_state["sia_active_bg_hex"] = "#111827"
