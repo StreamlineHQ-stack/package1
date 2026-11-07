@@ -1,4 +1,3 @@
-from sia_streetwear_drop_module import build_streetwear_drop_deck
 from sia_inspiration_template_module import build_inspiration_editorial_deck, get_cached_scenic_bg_base64
 # sia_studio.py • Style Inspiration & Analysis Studio (SIA) with Carousel Content Engine & Deck Carousel Player
 import streamlit as st
