@@ -6,3 +6,6 @@ imageio
 imageio-ffmpeg
 numpy
 python-docx
+opencv-python-headless
+pytesseract
+Pillow
