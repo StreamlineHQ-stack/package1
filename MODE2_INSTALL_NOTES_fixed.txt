@@ -1,0 +1,26 @@
+MODE 2 PATCH — INSTALLATION
+
+Replace these three files in your repository:
+  1. sia_studio.py                 <- sia_studio_MODE2_fixed.py
+  2. sia_universal_renderer.py     <- sia_universal_renderer_MODE2_fixed.py
+  3. slide_visual_asset_extractor.py <- slide_visual_asset_extractor_MODE2_fixed.py
+
+Add the system package from apt_MODE2_addition.txt to your existing apt.txt.
+Add the Python packages from requirements_MODE2_additions.txt to your existing
+requirements.txt. Do not overwrite existing dependency lists; append missing
+entries only.
+
+Then commit/push and redeploy your Streamlit app.
+
+Scope:
+- Existing Step 1, navigation, Visual DNA and Standalone paths are retained.
+- Mode 2 uses the extracted image as the actual slide canvas, not a side thumbnail.
+- Mode 2 download ZIP includes the visual PNG alongside slide JSON.
+- Kinetic handoff passes the visual asset in session state.
+
+Important limitation:
+The renderer currently applies a consistent lower copy panel over the extracted
+textless image. It does not yet infer the exact former typography positions,
+font sizes or text boxes from the reference. Also, the Kinetic renderer must
+consume kinetic_visual_asset_bytes or kinetic_visual_asset_data_url to show
+the asset after handoff.
