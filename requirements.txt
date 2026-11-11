@@ -8,4 +8,4 @@ numpy
 python-docx
 opencv-python-headless
 pytesseract
-
+rembg
