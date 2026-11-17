@@ -4,6 +4,7 @@ from license_verifier import verify_license_sidebar
 import feature_to_benefit_app
 from carousel_studio_module import render_carousel_studio
 import sia_studio
+import animator_app
 import audio_module
 import assembly_module
 
@@ -33,6 +34,15 @@ if not is_licensed:
 if "active_tool_idx" not in st.session_state:
     st.session_state["active_tool_idx"] = 0
 
+# --- BRIDGE SESSION STATE CHECK (Enforces Sequential Flow) ---
+if "bridge_active_tool" in st.session_state:
+    target = st.session_state["bridge_active_tool"]
+    if target == "Kinetic Animator":
+        st.session_state["active_tool_idx"] = 3
+    elif target == "Audio & Assembler":
+        st.session_state["active_tool_idx"] = 5
+    del st.session_state["bridge_active_tool"]
+
 # --- MASTER ONBOARDING DASHBOARD & NAVIGATION ---
 st.markdown("<h1 style='text-align: center;'>⚡ Creator Suite: Master Platform Hub</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: gray;'>Welcome to your intelligent direct-response creator workspace.</p>", unsafe_allow_html=True)
@@ -48,16 +58,16 @@ with st.container(border=True):
             st.session_state["active_tool_idx"] = 0
             st.rerun()
     with col_inf2:
-        if st.button("Feature-to-Benefits ➔", key="btn_onboard_f2b", use_container_width=True):
-            st.session_state["active_tool_idx"] = 1
+        if st.button("Kinetic Animator ➔", key="btn_onboard_kinetic", use_container_width=True):
+            st.session_state["active_tool_idx"] = 3
             st.rerun()
     with col_inf3:
-        if st.button("Style Inspiration ➔", key="btn_onboard_sia", use_container_width=True):
-            st.session_state["active_tool_idx"] = 2
+        if st.button("Audio Engine ➔", key="btn_onboard_audio", use_container_width=True):
+            st.session_state["active_tool_idx"] = 4
             st.rerun()
     with col_inf4:
         if st.button("Unified Export ➔", key="btn_onboard_export", use_container_width=True):
-            st.session_state["active_tool_idx"] = 4
+            st.session_state["active_tool_idx"] = 5
             st.rerun()
 
 st.divider()
@@ -67,8 +77,9 @@ tool_names = [
     "1. 🎨 Carousel Engine Studio",
     "2. 💡 Feature-to-Benefits",
     "3. ✨ Style Inspiration (SIA)",
-    "4. 🎵 Slide Audio & Voiceover Engine",
-    "5. 🎬 Unified Export & Assembly Engine",
+    "4. ⚡ Kinetic Animation Engine",
+    "5. 🎵 Slide Audio & Voiceover Engine",
+    "6. 🎬 Unified Export & Assembly Engine",
 ]
 
 selected_tool = st.selectbox("Select Active Tool Suite:", tool_names, index=st.session_state["active_tool_idx"])
@@ -86,7 +97,10 @@ elif st.session_state["active_tool_idx"] == 2:
     sia_studio.render_sia_studio(selected_tool)
 
 elif st.session_state["active_tool_idx"] == 3:
-    audio_module.render_audio_manager()
+    animator_app.render_animator()
 
 elif st.session_state["active_tool_idx"] == 4:
+    audio_module.render_audio_manager()
+
+elif st.session_state["active_tool_idx"] == 5:
     assembly_module.render_unified_assembler()
