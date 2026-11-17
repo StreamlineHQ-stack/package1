@@ -1,7 +1,7 @@
 # ==========================================
         # OPTION 2: SWIPE-TO-TEMPLATE LAYOUT ARCHITECTURE ENGINE
         # ==========================================
-        elif "2. 3-Mode Visual Asset Extractor" in visual_path:
+if "2. 3-Mode Visual Asset Extractor" in visual_path:
             st.session_state["is_standalone_mode"] = False
             st.markdown("#### 📐 Swipe-to-Template Layout Architecture Engine")
             st.info("Structural layout cloning active. Deconstructs reference geometry and maps your deck content into a pristine matching template.")
