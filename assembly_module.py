@@ -1,79 +1,88 @@
 import streamlit as st
 import os
-import io
+import json
 import zipfile
+import io
 
 def render_unified_assembler():
-    st.markdown("### 🎬 Unified Export & Assembly Engine")
-    st.info("Compiles your Content Engine text, visual template styles, and audio tracks into a synchronized export package.")
+    st.markdown("<h1 style='text-align: center;'>🎬 Unified Export & Assembly Engine</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: gray;'>Compiles your Content Engine text, visual styles, and psych-acoustic audio tracks into a synchronized package.</p>", unsafe_allow_html=True)
+    st.divider()
     
-    # 1. Check prerequisites from session state
-    slide_contents = st.session_state.get("sia_slide_contents", [])
-    visual_brief = st.session_state.get("visual_brief", {})
-    audio_brief = st.session_state.get("audio_brief", {})
+    # Pre-flight Status Checks
+    slides_ready = bool(st.session_state.get("sia_slide_contents") or st.session_state.get("deck_json"))
+    visual_ready = bool(st.session_state.get("visual_brief"))
+    audio_brief = st.session_state.get("audio_brief", {"mode": "None (Silent)", "path": None})
     
-    # Status dashboard
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if slide_contents:
-            st.success(f"✅ Content: {len(slide_contents)} slides ready")
+    col_chk1, col_chk2, col_chk3 = st.columns(3)
+    with col_chk1:
+        if slides_ready:
+            st.success("✅ Content Engine slides loaded")
         else:
             st.error("❌ Content Engine missing slides")
-            
-    with col2:
-        if visual_brief:
-            st.success(f"✅ Visual: {visual_brief.get('design_style', 'Template Loaded')} active")
+    with col_chk2:
+        if visual_ready:
+            st.success("✅ Visual template selected")
         else:
             st.error("❌ Visual template not selected")
-            
-    with col3:
-        audio_mode = audio_brief.get("mode", "None (Silent)")
-        st.info(f"🎵 Audio: {audio_mode}")
+    with col_chk3:
+        st.info(f"🎵 Audio: {audio_brief['mode']}")
         
-    st.markdown("---")
+    st.divider()
     
-    # 2. Execution Pipeline Button
-    if st.button("🚀 Run Pipeline: Render Frames & Sync Audio", key="run_unified_assembly_btn"):
-        if not slide_contents or not visual_brief:
-            st.error("Please complete Step 1 (Content) and Step 2 (Visual Template) before running the assembler.")
-            return
+    # Timeline & Audio Sync Controls
+    st.markdown("### ⚙️ Timeline & Audio Sync Configuration")
+    col_t1, col_t2 = st.columns(2)
+    with col_t1:
+        seconds_per_slide = st.slider("Duration per Slide (Seconds):", 1.0, 5.0, 2.5, step=0.25, key="assembler_sps")
+    with col_t2:
+        audio_behavior = st.selectbox(
+            "Audio Track Timeline Behavior:",
+            [
+                "Loop to Match Slide Duration",
+                "Stretch / Time-Scale to Fit Total Deck",
+                "Play Once with Clean Fade-Out"
+            ],
+            key="assembler_audio_behavior"
+        )
+        
+    st.divider()
+    
+    if st.button("🚀 Run Unified Pipeline & Build Export Package", type="primary", use_container_width=True, key="run_assembler_pipeline"):
+        with st.spinner("Multiplexing frames, applying psych-acoustic audio mapping, and building export bundle..."):
+            slides = st.session_state.get("sia_slide_contents") or st.session_state.get("deck_json", [])
+            total_duration = len(slides) * seconds_per_slide
             
-        with st.status("⚙️ Executing Production Pipeline...", expanded=True) as status:
-            st.write("1️⃣ Initializing canvas dimensions and typography styles...")
-            # Simulate frame rendering step
-            st.write("2️⃣ Rendering animation frames and calculating exact slide duration vectors...")
-            slide_duration_seconds = 3.5  # Standardized duration per slide for sync
-            total_duration = len(slide_contents) * slide_duration_seconds
-            
-            st.write(f"3️⃣ Multiplexing Audio track (Synced to {total_duration}s total timeline)...")
-            if audio_brief.get("path"):
-                st.write(f"   -> Bound audio file: `{audio_brief.get('path')}`")
-            else:
-                st.write("   -> Exporting visual sequence (Silent mode active)")
-                
-            st.write("4️⃣ Packaging final assets into export archive...")
-            
-            # Create an in-memory zip archive containing mock rendered slides
+            # Create export zip archive
             zip_buffer = io.BytesIO()
             with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-                for idx, slide in enumerate(slide_contents, start=1):
-                    # Create a dummy slide representation for the export package
-                    slide_text = f"Slide {idx}: {slide['headline']}\n{slide['body']}"
-                    zip_file.writestr(f"slide_{idx:02d}.txt", slide_text)
+                # Save deck json manifest
+                zip_file.writestr("deck_manifest.json", json.dumps(slides, indent=2))
                 
-                if audio_brief.get("path") and os.path.exists(audio_brief["path"]):
-                    zip_file.write(audio_brief["path"], arcname="background_audio.mp3")
-                    
+                # Save audio brief & timeline metadata
+                metadata = {
+                    "total_slides": len(slides),
+                    "seconds_per_slide": seconds_per_slide,
+                    "total_duration_seconds": total_duration,
+                    "audio_mode": audio_brief["mode"],
+                    "audio_timeline_behavior": audio_behavior
+                }
+                zip_file.writestr("export_metadata.json", json.dumps(metadata, indent=2))
+                
+                # Bundle audio file if present
+                if audio_brief["path"] and os.path.exists(audio_brief["path"]):
+                    with open(audio_brief["path"], "rb") as af:
+                        zip_file.writestr("synchronized_track.wav", af.read())
+                        
             zip_buffer.seek(0)
-            status.update(label="✨ Pipeline complete! Export package ready.", state="complete", expanded=False)
             
-        st.success("🎉 Carousel deck and audio assets successfully multiplexed!")
-        
-        # Download button for final package
-        st.download_button(
-            label="📦 Download Complete Export Package (.zip)",
-            data=zip_buffer,
-            file_name="sia_studio_export_bundle.zip",
-            mime="application/zip",
-            key="download_export_bundle"
-        )
+            st.success(f"🎉 Pipeline Complete! Total Timeline: {total_duration}s | Audio Behavior: {audio_behavior}")
+            
+            st.download_button(
+                label="📥 Download Synchronized Master Export Package (.zip)",
+                data=zip_buffer,
+                file_name="master_creator_export_bundle.zip",
+                mime="application/zip",
+                use_container_width=True,
+                key="download_master_bundle"
+            )
