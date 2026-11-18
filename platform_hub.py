@@ -1,7 +1,6 @@
 # platform_hub.py • Master Platform Hub (Onboarding & Tool Router)
 import streamlit as st
 from license_verifier import verify_license_sidebar
-import feature_to_benefit_app
 from carousel_studio_module import render_carousel_studio
 import sia_studio
 import animator_app
@@ -67,6 +66,7 @@ idx = st.session_state["active_tool_idx"]
 if idx == 0:
     render_carousel_studio()
 elif idx == 1:
+    import feature_to_benefit_app
     feature_to_benefit_app.render()
 elif idx == 2:
     sia_studio.render_sia_studio("Style Inspiration (SIA)")
