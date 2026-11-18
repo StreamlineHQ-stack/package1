@@ -1,73 +1,81 @@
-# content_engine_module.py • Dedicated Content Ideation & Framework Generator
+# content_engine_module.py • Direct-Response Ideation & Full Framework Library Hub
 import streamlit as st
+from app_engine import generate_carousel_deck
+from framework_data import FRAMEWORK_LIBRARY
+
+try:
+    from templates.november import NOVEMBER_FRAMEWORK_LIBRARY
+except Exception:
+    NOVEMBER_FRAMEWORK_LIBRARY = {}
 
 def render_content_engine():
-    st.markdown("<h1 style='text-align: center;'>✍️ Content Engine</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: gray;'>Direct-Response Ideation, Frameworks & Upstream/Downstream Hub</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>🧠 Content Engine (Step 1)</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: gray;'>Direct-Response Ideation • 100-Framework Proprietary USP Library & Downstream Hub</p>", unsafe_allow_html=True)
     st.divider()
 
-    # --- 1. CATCH UPSTREAM PAYLOAD FROM FEATURE-TO-BENEFITS (IF ANY) ---
-    if "f2b_payload" in st.session_state and st.session_state["f2b_payload"]:
-        st.info(f"📥 **Upstream Payload Received from Feature-to-Benefits:**\n\n_{st.session_state['f2b_payload']}_")
-        if st.button("✨ Load Upstream Payload into Hook & Notes"):
-            st.session_state["default_hook"] = f"How to leverage: {st.session_state['f2b_payload'][:50]}..."
-            st.session_state["default_notes"] = f"Derived from Feature-to-Benefits analysis: {st.session_state['f2b_payload']}"
-            del st.session_state["f2b_payload"]
-            st.rerun()
+    # Merge core framework library with any seasonal/vault additions
+    active_library = FRAMEWORK_LIBRARY.copy()
+    if NOVEMBER_FRAMEWORK_LIBRARY:
+        active_library.update(NOVEMBER_FRAMEWORK_LIBRARY)
 
-    # --- 2. CONFIGURATION & FRAMEWORKS ---
-    st.markdown("### ⚙️ Configure Frameworks & Custom Angles")
-    
-    default_hook_val = st.session_state.get("default_hook", "Stop trading time for pennies. Build systems that scale.")
-    default_notes_val = st.session_state.get("default_notes", "Emphasize leverage, micro-SaaS automation, and escaping manual client delivery.")
-
-    col_c1, col_c2 = st.columns(2)
-    with col_c1:
-        copy_framework = st.selectbox(
-            "Select Copywriting Framework:",
-            ["Problem-Agitate-Solve (PAS)", "AIDA (Attention, Interest, Desire, Action)", "Before-After-Bridge (BAB)", "Direct Value Breakdown"]
-        )
-        core_hook = st.text_input("Core Hook / Headline Idea:", value=default_hook_val)
-        target_audience = st.text_input("Target Audience:", value="Fitness and marketing coaches making $5k-$10k/mo.")
-
-    with col_c2:
-        slide_count = st.slider("Target Slide Count:", 3, 10, 4)
-        custom_notes = st.text_area(
-            "📝 Custom Notes & Specific Angles:",
-            value=default_notes_val,
-            height=110
-        )
-    
-    if st.button("🚀 Generate Structured Deck Content", type="primary", use_container_width=True):
-        generated_slides = [
-            {"title": core_hook, "body": f"Framework: {copy_framework}\nTarget: {target_audience}\n\nLet's break down why your current workflow is leaking time."},
-            {"title": "The Core Bottleneck & Notes", "body": f"Notes applied: {custom_notes[:140]}...\n\nWhen you rely purely on manual delivery, your revenue is capped by your personal hours."},
-            {"title": "The High-Leverage Solution", "body": "1. Package your expertise into automated micro-assets\n2. Deploy repeatable systems\n3. Scale your digital footprint effortlessly."},
-            {"title": "Your Next Step", "body": "Deploy this exact structure into your creator suite and start scaling today."}
-        ]
-        st.session_state["sia_slide_contents"] = generated_slides[:slide_count]
-        st.success("✅ Content Engine generated deck successfully!")
-
-    # --- 3. PREVIEW & DOWNSTREAM ROUTING ---
-    if "sia_slide_contents" in st.session_state and st.session_state["sia_slide_contents"]:
-        st.divider()
-        st.markdown("### 👁️ Generated Content Preview & Downstream Handoff")
+    with st.container(border=True):
+        st.markdown("### ⚙️ Configure Proprietary Frameworks & Custom Angles")
         
-        for i, slide in enumerate(st.session_state["sia_slide_contents"]):
-            with st.expander(f"Slide {i+1}: {slide['title'][:40]}..."):
-                st.markdown(f"**Title:** {slide['title']}")
-                st.markdown(f"**Body:** {slide['body']}")
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            selected_pillar = st.selectbox(
+                "Select Content Pillar (USP Library):",
+                list(active_library.keys())
+            )
+        with col_f2:
+            templates_in_pillar = active_library[selected_pillar]
+            selected_template_name = st.selectbox(
+                "Select Direct-Response Blueprint (1-100):",
+                list(templates_in_pillar.keys())
+            )
 
-        st.markdown("---")
-        st.markdown("### 🔄 Downstream Pipeline Routing")
-        col_r1, col_r2 = st.columns(2)
-        with col_r1:
-            if st.button("🚀 Send to Carousel Studio", type="primary", use_container_width=True):
-                st.session_state["active_tool_idx"] = 1  # Jump to Carousel Studio
-                st.success("✅ Synced with Carousel Studio!")
+        # Pull default blueprint data
+        blueprint_data = templates_in_pillar[selected_template_name]
+
+        col_h1, col_h2 = st.columns(2)
+        with col_h1:
+            core_hook = st.text_input("Core Hook / Headline Idea:", value=blueprint_data["hook"])
+            target_audience = st.text_input("Target Audience:", value="Fitness and marketing coaches scaling to $10k/mo.")
+        with col_h2:
+            custom_notes = st.text_area(
+                "Custom Notes & Specific Angles:", 
+                value=f"Problem: {blueprint_data['problem']} | Solution: {blueprint_data['solution']} | CTA: {blueprint_data['cta']}", 
+                height=106
+            )
+
+        slide_count = st.slider("Target Slide Count:", min_value=3, max_value=8, value=6)
+
+        if st.button("🚀 Generate Structured Deck Content via Framework", type="primary", use_container_width=True):
+            with st.spinner("Synthesizing direct-response deck from proprietary framework library..."):
+                raw_prompt = f"Pillar: {selected_pillar}\nTemplate: {selected_template_name}\nHook: {core_hook}\nProblem: {blueprint_data['problem']}\nSolution: {blueprint_data['solution']}\nCTA: {blueprint_data['cta']}\nNotes: {custom_notes}"
+                res, status_msg = generate_carousel_deck(raw_prompt, slide_count=slide_count, mode="framework")
+                
+                # Save into session state for downstream handoffs
+                st.session_state["deck_json"] = res
+                st.session_state["engine_status"] = status_msg
+                st.success("✅ Structured deck generated successfully from proprietary framework! Ready for downstream handoff.")
+
+    # --- DOWNSTREAM HANDOFF ACTIONS ---
+    if "deck_json" in st.session_state and st.session_state["deck_json"]:
+        st.divider()
+        st.markdown("### 🔄 Downstream Handoff & Distribution")
+        
+        col_d1, col_d2, col_d3 = st.columns(3)
+        with col_d1:
+            if st.button("🎨 Send to Carousel Studio ➔", type="primary", use_container_width=True):
+                st.session_state["active_tool_idx"] = 1  # Index for Carousel Studio
                 st.rerun()
-        with col_r2:
-            if st.button("✨ Send to Style Inspiration (SIA)", type="secondary", use_container_width=True):
-                st.session_state["active_tool_idx"] = 2  # Jump to SIA
-                st.success("✅ Synced with SIA!")
+        with col_d2:
+            if st.button("✨ Send to Style Inspiration ➔", use_container_width=True):
+                st.session_state["sia_downstage_payload"] = st.session_state["deck_json"]
+                st.session_state["active_tool_idx"] = 3  # Index for SIA
+                st.rerun()
+        with col_d3:
+            if st.button("🎬 Send to Unified Export ➔", use_container_width=True):
+                st.session_state["active_tool_idx"] = 6  # Index for Unified Export
                 st.rerun()
