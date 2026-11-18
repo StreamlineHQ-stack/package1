@@ -1,80 +1,101 @@
+# carousel_studio_module.py • Visual Asset Merger, Slide Editor & Export Hub
 import streamlit as st
+import zipfile
+import io
 
 def render_carousel_studio():
-    st.markdown("<h1 style='text-align: center;'>🎨 Carousel Engine Studio</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: gray;'>Direct-Response Content Engine & Slide Workspace</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>🎨 Carousel Studio & Visual Assembler</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: gray;'>Merge Content Engine output with visual assets, preview, edit, export PNGs, or send to Kinetic Animator.</p>", unsafe_allow_html=True)
     st.divider()
 
-    # --- 1. CONTENT ENGINE INITIALIZATION & INPUTS ---
-    st.markdown("### ✍️ Step 1: Content Engine Core")
-    
-    with st.expander("⚙️ Configure Raw Content & Hook Parameters", expanded=not bool(st.session_state.get("sia_slide_contents"))):
-        core_hook = st.text_input("Core Hook / Headline Idea:", value="Stop trading time for pennies. Build systems that scale.")
-        core_target = st.text_input("Target Audience:", value="Fitness and marketing coaches making $5k-$10k/mo.")
-        slide_count = st.slider("Number of Slides:", 3, 10, 4)
-        
-        if st.button("🚀 Generate Structured Deck Content", type="primary", use_container_width=True):
-            # Generate programmatic structure based on inputs
-            generated_slides = [
-                {"title": core_hook, "body": f"Designed specifically for {core_target}. Read closely."},
-                {"title": "The Core Bottleneck", "body": "Most creators rely 100% on manual execution. When you stop working, revenue stops."},
-                {"title": "The High-Leverage Solution", "body": "1. Package your expertise into micro-assets\n2. Automate distribution\n3. Build predictable funnels."},
-                {"title": "Your Next Action", "body": "Deploy this framework today and scale your output."}
-            ]
-            st.session_state["sia_slide_contents"] = generated_slides[:slide_count]
-            st.success("✅ Content Engine generated deck successfully!")
-            st.rerun()
-
-    st.divider()
-
-    # --- 2. SLIDE REVIEW & VISUAL WORKSPACE ---
-    st.markdown("### 👁️ Step 2: Slide Review & Editing Window")
-    
+    # --- 1. CHECK FOR CONTENT ENGINE PAYLOAD ---
     if "sia_slide_contents" not in st.session_state or not st.session_state["sia_slide_contents"]:
-        st.info("ℹ️ Generate content above or send a payload from Feature-to-Benefits to populate your slides.")
+        st.warning("⚠️ No deck found! Please generate structured content in the **Content Engine** first.")
+        if st.button("⬅️ Return to Content Engine"):
+            st.session_state["active_tool_idx"] = 0
+            st.rerun()
         return
 
     slides = st.session_state["sia_slide_contents"]
+
+    # --- 2. VISUAL THEME & LAYOUT STYLING ---
+    st.sidebar.markdown("### 🎨 Visual Theme Selector")
+    theme_choice = st.sidebar.radio("Select Style Preset:", ["November Dark Vault", "Clean Minimalist Light", "High-Contrast Direct Response"])
     
-    selected_slide_idx = st.selectbox("Select Slide to Inspect:", range(len(slides)), format_func=lambda i: f"Slide {i+1}: {slides[i]['title'][:30]}...")
-    current_slide = slides[selected_slide_idx]
+    if theme_choice == "November Dark Vault":
+        bg_col, accent_col, text_col = "#121218", "#ff4b4b", "#ffffff"
+    elif theme_choice == "Clean Minimalist Light":
+        bg_col, accent_col, text_col = "#ffffff", "#0066cc", "#111111"
+    else:
+        bg_col, accent_col, text_col = "#000000", "#ffcc00", "#ffffff"
+
+    # --- 3. SLIDE-BY-SLIDE INSPECTION & EDITING SCOPE ---
+    st.markdown("### 👁️ Slide Visual Preview & Individual Editing Scope")
     
-    col_prev, col_edit = st.columns([1.2, 1])
+    selected_idx = st.selectbox(
+        "Select Slide to Inspect/Edit:",
+        range(len(slides)),
+        format_func=lambda i: f"Slide {i+1}: {slides[i]['title'][:35]}..."
+    )
+    
+    current_slide = slides[selected_idx]
+    
+    col_prev, col_edit = st.columns([1.3, 1])
     
     with col_prev:
         st.markdown(f"""
-        <div style="background-color: #121218; border: 2px solid #ff4b4b; border-radius: 12px; padding: 30px; min-height: 320px; color: #ffffff;">
-            <p style="color: #ff4b4b; font-weight: bold; font-size: 14px;">SLIDE {selected_slide_idx + 1} OF {len(slides)}</p>
-            <h2 style="color: #ffffff; margin-top: 10px; font-size: 22px;">{current_slide['title']}</h2>
-            <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
-            <p style="color: #d0d0d0; font-size: 15px; line-height: 1.5; white-space: pre-wrap;">{current_slide['body']}</p>
+        <div style="background-color: {bg_col}; border: 3px solid {accent_col}; border-radius: 16px; padding: 35px; min-height: 340px; color: {text_col}; box-shadow: 0px 8px 24px rgba(0,0,0,0.4);">
+            <p style="color: {accent_col}; font-weight: bold; font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px;">Slide {selected_idx + 1} of {len(slides)} • {theme_choice}</p>
+            <h2 style="color: {text_col}; margin-top: 12px; font-size: 24px; line-height: 1.3;">{current_slide['title']}</h2>
+            <hr style="border-color: rgba(255,255,255,0.15); margin: 20px 0;">
+            <p style="font-size: 16px; line-height: 1.6; white-space: pre-wrap; opacity: 0.9;">{current_slide['body']}</p>
         </div>
         """, unsafe_allow_html=True)
         
     with col_edit:
-        st.markdown("#### ✏️ Quick Edit Slide")
-        new_title = st.text_input("Slide Title", value=current_slide['title'], key=f"ce_title_{selected_slide_idx}")
-        new_body = st.text_area("Slide Body", value=current_slide['body'], height=130, key=f"ce_body_{selected_slide_idx}")
+        st.markdown("#### ✏️ Scope Edit: Current Slide")
+        edited_title = st.text_input("Edit Slide Title", value=current_slide['title'], key=f"edit_t_{selected_idx}")
+        edited_body = st.text_area("Edit Slide Body", value=current_slide['body'], height=150, key=f"edit_b_{selected_idx}")
         
-        if st.button("💾 Save Slide Changes", use_container_width=True):
-            slides[selected_slide_idx]['title'] = new_title
-            slides[selected_slide_idx]['body'] = new_body
+        if st.button("💾 Save Slide Updates", use_container_width=True):
+            slides[selected_idx]['title'] = edited_title
+            slides[selected_idx]['body'] = edited_body
             st.session_state["sia_slide_contents"] = slides
-            st.success("✅ Saved!")
+            st.success("✅ Slide updated in deck successfully!")
             st.rerun()
 
     st.divider()
+
+    # --- 4. FINISHED DECK EXPORT & PIPELINE HANDOFF ---
+    st.markdown("### 🚀 Finished Deck Export & Pipeline Handoff")
     
-    # --- 3. PIPELINE DATA BRIDGE ---
-    st.markdown("### 🔄 Downstream Handoff")
-    col_b1, col_b2 = st.columns(2)
-    with col_b1:
-        if st.button("🚀 Send to Kinetic Animator", type="primary", use_container_width=True):
-            st.session_state["bridge_active_tool"] = "Kinetic Animator"
-            st.success("✅ Handed off to Kinetic Animator!")
+    col_e1, col_e2, col_e3 = st.columns(3)
+    
+    with col_e1:
+        # Generate simulated PNG ZIP export bundle
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            for idx, s in enumerate(slides):
+                slide_txt = f"SLIDE {idx+1}\nTITLE: {s['title']}\nBODY:\n{s['body']}"
+                zip_file.writestr(f"slide_{idx+1}.txt", slide_txt) # Placeholder text-to-image bundle
+        zip_buffer.seek(0)
+        
+        st.download_button(
+            label="📥 Download Finished Deck (.zip)",
+            data=zip_buffer,
+            file_name="carousel_deck_assets.zip",
+            mime="application/zip",
+            use_container_width=True
+        )
+        
+    with col_e2:
+        if st.button("⚡ Send to Kinetic Animator", type="primary", use_container_width=True):
+            st.session_state["active_tool_idx"] = 3  # Jump to Kinetic Animator
+            st.success("✅ Deck passed to Kinetic Animator!")
             st.rerun()
-    with col_b2:
+            
+    with col_e3:
         if st.button("🎵 Send to Audio & Assembler", type="secondary", use_container_width=True):
-            st.session_state["bridge_active_tool"] = "Audio & Assembler"
-            st.success("✅ Handed off to Assembler!")
+            st.session_state["active_tool_idx"] = 4  # Jump to Audio Engine
+            st.success("✅ Deck passed to Audio Engine!")
             st.rerun()
