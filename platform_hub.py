@@ -15,7 +15,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Hide Streamlit UI artifacts
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -25,24 +24,19 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Verify License (persists via session state inside verifier)
 is_licensed = verify_license_sidebar()
 if not is_licensed:
     st.stop()
 
-# Initialize tool navigation state
 if "active_tool_idx" not in st.session_state:
     st.session_state["active_tool_idx"] = 0
 
-# --- MASTER ONBOARDING DASHBOARD & NAVIGATION ---
 st.markdown("<h1 style='text-align: center;'>⚡ Creator Suite: Master Platform Hub</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: gray;'>Welcome to your intelligent direct-response creator workspace.</p>", unsafe_allow_html=True)
 st.divider()
 
-# The Sacred Onboarding UI Container with Direct Action Buttons for All Tools
 with st.container(border=True):
     st.markdown("### 🚀 Master Tool Suite Direct Access")
-    
     col_inf1, col_inf2, col_inf3 = st.columns(3)
     with col_inf1:
         if st.button("🎨 Carousel Studio", key="btn_tool_carousel", use_container_width=True):
@@ -51,7 +45,6 @@ with st.container(border=True):
         if st.button("⚡ Kinetic Animator", key="btn_tool_kinetic", use_container_width=True):
             st.session_state["active_tool_idx"] = 3
             st.rerun()
-            
     with col_inf2:
         if st.button("💡 Feature-to-Benefits", key="btn_tool_f2b", use_container_width=True):
             st.session_state["active_tool_idx"] = 1
@@ -59,7 +52,6 @@ with st.container(border=True):
         if st.button("🎵 Audio Engine", key="btn_tool_audio", use_container_width=True):
             st.session_state["active_tool_idx"] = 4
             st.rerun()
-            
     with col_inf3:
         if st.button("✨ Style Inspiration (SIA)", key="btn_tool_sia", use_container_width=True):
             st.session_state["active_tool_idx"] = 2
@@ -70,7 +62,6 @@ with st.container(border=True):
 
 st.divider()
 
-# --- ROUTING BASED ON SELECTED TOOL ---
 idx = st.session_state["active_tool_idx"]
 
 if idx == 0:
